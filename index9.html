@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+<body>
+<style>
+canvas{
+z-index: -1;
+position: absolute;
+left: 0px;
+top: 0px;
+right: 0px;
+bottom: 0px;
+margin-left: 0px;
+margin-top: 0px;
+margin-right: 0px;
+margin-bottom: 0px;
+}
+
+img.hidden{
+visibility: hidden;
+height: 0px;
+width: 0px;
+}
+
+img.ball{
+width: 36x;
+height: 36px;
+}
+
+.strzalkaContainer{
+position: absolute;
+}
+
+#strzalPrw{
+left: 52%;
+top: 46%;
+opacity: 0.0;
+}
+#strzalPros{
+left: 50%;
+top: 40%;
+opacity: 0.0;
+}
+#strzalLew{
+left: 42%;
+top: 46%;
+opacity: 0.0;
+}
+
+.strzalka{
+opacity: inherit;
+}
+
+.formul{
+visibility: visible;
+background-color: #f7f7f9;
+border: 2px ridge #c2c2c6;
+width: 208px;
+padding: 5px 4px;
+}
+
+.liczbowe{
+width:63px;
+}
+
+input{
+visibility: inherit;
+}
+
+.nazwul{
+width:200px;
+}
+
+#confirm{
+position: absolute;
+visibility: visible;
+}
+
+#pieszy{
+position: absolute;
+z-order: 15;
+visibility: visible;
+}
+
+#undo{
+position: absolute;
+z-order: 9;
+visibility: visible;
+}
+
+#kulka1{
+visibility: visible;
+}
+
+#kulka3{
+visibility: visible;
+}
+
+#kulka5{
+visibility: visible;
+}
+
+#kulka10{
+visibility: visible;
+}
+
+
+</style>
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script> 
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script src="jquery.ui.touch-punch.min.js"></script>
+
+<img id="drogaSR" class="hidden" src="droga_srodek.PNG">
+<img id="drogaPion" class="hidden" src="droga_pion.PNG">
+<img id="drogaPoz" class="hidden" src="droga_poziom.PNG">
+<img id="drzewa" class="hidden" src="drzowka.PNG">
+
+<div id="strzalPrw" class="strzalkaContainer"><img class="strzalka" src="strzalka_w_prawo.png" style="width: 140px; height: 140px;"></div>
+<div id="strzalPros" class="strzalkaContainer"><img class="strzalka" src="strzalka_prosto.png" style="width: 36%; height: 36%;"></div>
+<div id="strzalLew" class="strzalkaContainer"><img class="strzalka" src="strzalka_w_lewo.png" style="width: 140px; height: 140px;"></div>
+
+<div style="position: absolute; z-index = -2; width: 100%; height: 100%"><canvas id="myCanvas" width="250" height="300" style="border:1px solid #d3d3d3;">
+Your browser does not support the HTML5 canvas tag.</canvas><div>
+
+
+<div id="kulka1" class="draggujemy"><img class="ball" src="cerkul1zautem2.PNG"></div>
+<div id="kulka3" class="draggujemy"><img class="ball" src="cerkul3zmotomotocz.PNG"></div>
+<div id="kulka5" class="draggujemy"><img class="ball" src="cerkul5zbuscz.PNG"></div>
+<div id="kulka10" class="draggujemy"><img class="ball" src="cerkul10zpolis.PNG"></div>
+
+<div id="Dulica" class="formul">
+	<input type="text" class="nazwul" id="nazwaDulicy" placeholder="nazwa ulicy (ta zawsze ma byc!)"></input><br>
+	Liczba pasow ruchu: <input type="number" id="ilePasowDol" class="liczbowe" min="1">
+</div>
+
+<div id="Gulica" class="formul">
+	<input type="text" class="nazwul" id="nazwaGulicy" placeholder="nazwa ulicy (puste jesli nie ma)"><br>
+	Liczba pasow ruchu: <input type="number" id="ilePasowGora" class="liczbowe" min="1">
+</div>
+
+<div id="Pulica" class="formul">
+	<input type="text" class="nazwul" id="nazwaPulicy" placeholder="nazwa ulicy (puste jesli nie ma)"><br>
+	Liczba pasow ruchu: <input type="number" id="ilePasowPrawo" class="liczbowe" min="1">
+</div>
+
+<div id="Lulica" class="formul">
+	<input type="text" class="nazwul" id="nazwaLulicy" placeholder="nazwa ulicy (puste jesli nie ma)"><br>
+	Liczba pasow ruchu: <input type="number" id="ilePasowLewo" class="liczbowe" min="1">
+</div>
+
+<div id="confirm"><button onclick="startAfterConfirmed()">Zatwierdź</button></div>
+
+<div id="pieszy"><img src="pieszy.png" height="42" width="42" onclick="pieszyPlus()"></div>
+
+<div id="undo"><button onclick="undoCommit()">Cofnij ostatni wpis</button></div>
+
+<p id="debug"><p>
+
+<script>
+var c = document.getElementById("myCanvas");	//ez dostep i srodek
+var ctx = c.getContext("2d");
+c.width = window.innerWidth - 30;
+c.height = window.innerHeight - 30;
+	var midW=(window.innerWidth - 30)/2;
+	var midH=(window.innerHeight - 30)/2;
+	
+	var NazwaGUlicyIPasy;
+	var NazwaDUlicyIPasy;
+	var NazwaPUlicyIPasy;
+	var NazwaLUlicyIPasy;
+	
+	var dokadJedziesz;
+	
+	var audio = new Audio('conf_sound.mp3');
+	
+	//var UlDistnieje = true; //zawsze jest cfghghf
+	var UlGistnieje = false;
+	var UlPistnieje = false;
+	var UlListnieje = false;
+	
+$( function() { 
+    $(".draggujemy").draggable(); 
+} ); 
+	
+	
+function drawImg(imgID, posX, posY) {
+  var c = document.getElementById("myCanvas");
+  var ctx = c.getContext("2d");
+  var img = document.getElementById(imgID);
+  ctx.drawImage(img,posX,posY);
+}
+
+function drawCrossroad(){
+	for(var i=0; i<10; i++){
+		if(UlGistnieje) drawImg('drogaPion',midW - 104/2,midH - 188 - 66 - 160*i);	//w gore
+		/*  zawsze  */	drawImg('drogaPion',midW - 104/2,midH + 188/2 + 160*i);	//w dol
+		if(UlListnieje) drawImg('drogaPoz',midW - 188/2 - 160*(i+1),midH - 104/2);	//w lewo
+		if(UlPistnieje) drawImg('drogaPoz',midW - 188/2 + 26 + 160*(i+1),midH - 104/2);	//w prawo
+	}
+}
+
+function moveTo(what, x, y){
+	document.getElementById(what).setAttribute("style", "position: absolute; z-index: 50; left:" + (x-18) + "px; top:" + (y-18) + "px;");
+	
+}
+
+
+function resetBallPos(){
+  moveTo("kulka1", midW + 32, midH + 120);
+  moveTo("kulka3", midW + 32, midH + 120 + 42);
+  moveTo("kulka5", midW + 32, midH + 120 + 42*2);
+  moveTo("kulka10", midW + 32, midH + 120 + 42*3);
+  
+  		document.getElementById("strzalPrw").style.opacity = 0.0;
+		document.getElementById("strzalLew").style.opacity = 0.0;
+		document.getElementById("strzalPros").style.opacity = 0.0;
+}
+
+
+function evalB1Dir(){ 			/// ocenia w ktorej czesci ekranu jest kulka
+	var hulakula = document.getElementById("kulka1");	//get pozycje
+	var ballCentreX = window.getComputedStyle(hulakula, null).getPropertyValue("left");
+		ballCentreX = ballCentreX.replace("px", "");
+	var ballCentreY = window.getComputedStyle(hulakula, null).getPropertyValue("top");
+		ballCentreY = ballCentreY.replace("px", "")
+	var delta = 80;
+	var turnValid = true;
+		
+	//document.getElementById("debug").innerHTML = midW + "  " + ballCentreX + "<br>" + midH + "  " + ballCentreY + "<br>" + (ballCentreX - midW) + "  " + (midH - ballCentreY);
+	
+	if(ballCentreX > (midW + delta) || ballCentreX < (midW - delta) || ballCentreY < (midH - delta)){	/// sprawdzanie czy jest poza poz startowa zeby nie migalo jak inne resetuja
+			typPojazdu = "samochod";
+	if((ballCentreX > (midW + delta) && (ballCentreX - midW) > (midH - ballCentreY))&& UlPistnieje)	// czy po prawej
+		{
+			document.getElementById("strzalPrw").style.opacity = 0.5;
+			document.getElementById("strzalLew").style.opacity = 0.0;
+			document.getElementById("strzalPros").style.opacity = 0.0;
+			
+			dokadJedziesz = NazwaPUlicyIPasy;
+		}
+		else {
+			document.getElementById("strzalPrw").style.opacity = 0.0;
+	
+		if((ballCentreX < (midW - delta) && (midW - ballCentreX) > (midH - ballCentreY))&& UlListnieje)	// czy po lewej
+			{
+				document.getElementById("strzalLew").style.opacity = 0.5;
+				document.getElementById("strzalPros").style.opacity = 0.0;
+				
+				dokadJedziesz = NazwaLUlicyIPasy;
+			}
+			else {
+				document.getElementById("strzalLew").style.opacity = 0.0;
+	
+			if((ballCentreY < (midH - delta))&& UlGistnieje)	// czy do góry
+				{
+					document.getElementById("strzalPros").style.opacity = 0.5;
+					
+					dokadJedziesz = NazwaGUlicyIPasy;
+				}
+				else {document.getElementById("strzalPros").style.opacity = 0.0; turnValid = false;}
+				}
+		}
+		
+		if(typPojazdu == "samochod"){ 	//apparently byla jakas kolizja
+		$(document).ready(function(){
+			$(".ball").mouseup(function(){
+				if(turnValid){
+					let czasPrzejazdu = new Date();
+					var dataIGodzina = czasPrzejazdu.getFullYear() + "." + czasPrzejazdu.getMonth() + "." + czasPrzejazdu.getDate() + " " + czasPrzejazdu.getHours() + ":" + czasPrzejazdu.getMinutes() + ":" + czasPrzejazdu.getSeconds();
+				
+					document.getElementById("debug").innerHTML = "ostatni zapis: " + dataIGodzina + "<br>Samochod osobowy przejechal z " + NazwaDUlicyIPasy + " do " + dokadJedziesz;
+					audio.play();
+				}
+				resetBallPos();
+				
+				
+			});
+		});
+}}}		//koniec ocen kulki
+
+function evalB3Dir(){ 			/// ocenia w ktorej czesci ekranu jest kulka
+	var hulakula = document.getElementById("kulka3");	//get pozycje
+	var ballCentreX = window.getComputedStyle(hulakula, null).getPropertyValue("left");
+		ballCentreX = ballCentreX.replace("px", "");
+	var ballCentreY = window.getComputedStyle(hulakula, null).getPropertyValue("top");
+		ballCentreY = ballCentreY.replace("px", "")
+	var delta = 80;
+	var typPojazdu;
+	var turnValid = true;
+		
+	//document.getElementById("debug").innerHTML = midW + "  " + ballCentreX + "<br>" + midH + "  " + ballCentreY + "<br>" + (ballCentreX - midW) + "  " + (midH - ballCentreY);
+	
+	if(ballCentreX > (midW + delta) || ballCentreX < (midW - delta) || ballCentreY < (midH - delta)){	/// sprawdzanie czy jest poza poz startowa zeby nie migalo jak inne resetuja
+			typPojazdu = "jednoslad";
+	if((ballCentreX > (midW + delta) && (ballCentreX - midW) > (midH - ballCentreY))&& UlPistnieje)	// czy po prawej
+		{
+			document.getElementById("strzalPrw").style.opacity = 0.5;
+			document.getElementById("strzalLew").style.opacity = 0.0;
+			document.getElementById("strzalPros").style.opacity = 0.0;
+			
+			dokadJedziesz = NazwaPUlicyIPasy;
+		}
+		else {
+			document.getElementById("strzalPrw").style.opacity = 0.0;
+	
+		if((ballCentreX < (midW - delta) && (midW - ballCentreX) > (midH - ballCentreY))&& UlListnieje)	// czy po lewej
+			{
+				document.getElementById("strzalLew").style.opacity = 0.5;
+				document.getElementById("strzalPros").style.opacity = 0.0;
+				
+				dokadJedziesz = NazwaLUlicyIPasy;
+			}
+			else {
+				document.getElementById("strzalLew").style.opacity = 0.0;
+	
+			if((ballCentreY < (midH - delta))&& UlGistnieje)	// czy do góry
+				{
+					document.getElementById("strzalPros").style.opacity = 0.5;
+					
+					dokadJedziesz = NazwaGUlicyIPasy;
+				}
+				else {document.getElementById("strzalPros").style.opacity = 0.0; turnValid = false}
+				}
+		}
+		
+		if(typPojazdu == "jednoslad"){ 	//apparently byla jakas kolizja
+		$(document).ready(function(){
+			$(".ball").mouseup(function(){
+				if(turnValid){
+					let czasPrzejazdu = new Date();
+					var dataIGodzina = czasPrzejazdu.getFullYear() + "." + czasPrzejazdu.getMonth() + "." + czasPrzejazdu.getDate() + " " + czasPrzejazdu.getHours() + ":" + czasPrzejazdu.getMinutes() + ":" + czasPrzejazdu.getSeconds();
+				
+					document.getElementById("debug").innerHTML = "ostatni zapis: " + dataIGodzina + "<br>Jednoslad przejechal z " + NazwaDUlicyIPasy + " do " + dokadJedziesz;
+					audio.play();
+				}
+				resetBallPos();
+			});
+		});
+}}}		//koniec ocen kulki
+
+function evalB5Dir(){ 			/// ocenia w ktorej czesci ekranu jest kulka
+	var hulakula = document.getElementById("kulka5");	//get pozycje
+	var ballCentreX = window.getComputedStyle(hulakula, null).getPropertyValue("left");
+		ballCentreX = ballCentreX.replace("px", "");
+	var ballCentreY = window.getComputedStyle(hulakula, null).getPropertyValue("top");
+		ballCentreY = ballCentreY.replace("px", "")
+	var delta = 80;
+	var turnValid = true;
+	
+		
+	//document.getElementById("debug").innerHTML = midW + "  " + ballCentreX + "<br>" + midH + "  " + ballCentreY + "<br>" + (ballCentreX - midW) + "  " + (midH - ballCentreY);
+	
+	if(ballCentreX > (midW + delta) || ballCentreX < (midW - delta) || ballCentreY < (midH - delta)){	/// sprawdzanie czy jest poza poz startowa zeby nie migalo jak inne resetuja
+					typPojazdu = "autobus";
+	
+	if((ballCentreX > (midW + delta) && (ballCentreX - midW) > (midH - ballCentreY))&& UlPistnieje)	// czy po prawej
+		{
+
+		
+			document.getElementById("strzalPrw").style.opacity = 0.5;
+			document.getElementById("strzalLew").style.opacity = 0.0;
+			document.getElementById("strzalPros").style.opacity = 0.0;
+			
+			dokadJedziesz = NazwaPUlicyIPasy;
+		}
+		else {
+			document.getElementById("strzalPrw").style.opacity = 0.0;
+	
+		if((ballCentreX < (midW - delta) && (midW - ballCentreX) > (midH - ballCentreY))&& UlListnieje)	// czy po lewej
+			{
+				document.getElementById("strzalLew").style.opacity = 0.5;
+				document.getElementById("strzalPros").style.opacity = 0.0;
+				
+				dokadJedziesz = NazwaLUlicyIPasy;
+			}
+			else {
+				document.getElementById("strzalLew").style.opacity = 0.0;
+	
+			if((ballCentreY < (midH - delta))&& UlGistnieje)	// czy do góry
+				{
+					document.getElementById("strzalPros").style.opacity = 0.5;
+					
+					dokadJedziesz = NazwaGUlicyIPasy;
+				}
+				else {document.getElementById("strzalPros").style.opacity = 0.0; turnValid = false}
+				}
+		}
+		
+		if(typPojazdu == "autobus"){ 	//apparently byla jakas kolizja
+		$(document).ready(function(){
+			$(".ball").mouseup(function(){
+				if(turnValid){
+					let czasPrzejazdu = new Date();
+					var dataIGodzina = czasPrzejazdu.getFullYear() + "." + czasPrzejazdu.getMonth() + "." + czasPrzejazdu.getDate() + " " + czasPrzejazdu.getHours() + ":" + czasPrzejazdu.getMinutes() + ":" + czasPrzejazdu.getSeconds();
+				
+					document.getElementById("debug").innerHTML = "ostatni zapis: " + dataIGodzina + "<br>Autobus przejechal z " + NazwaDUlicyIPasy + " do " + dokadJedziesz;
+					audio.play();
+				}
+				resetBallPos();
+			});
+		});
+}}}		//koniec ocen kulki
+
+function evalB10Dir(){ 			/// ocenia w ktorej czesci ekranu jest kulka
+	var hulakula = document.getElementById("kulka10");	//get pozycje
+	var ballCentreX = window.getComputedStyle(hulakula, null).getPropertyValue("left");
+		ballCentreX = ballCentreX.replace("px", "");
+	var ballCentreY = window.getComputedStyle(hulakula, null).getPropertyValue("top");
+		ballCentreY = ballCentreY.replace("px", "")
+	var delta = 80;
+	var turnValid = true;
+		
+	//document.getElementById("debug").innerHTML = midW + "  " + ballCentreX + "<br>" + midH + "  " + ballCentreY + "<br>" + (ballCentreX - midW) + "  " + (midH - ballCentreY);
+	
+	if(ballCentreX > (midW + delta) || ballCentreX < (midW - delta) || ballCentreY < (midH - delta)){	/// sprawdzanie czy jest poza poz startowa zeby nie migalo jak inne resetuja
+		typPojazdu = "przywilej";
+		
+	if((ballCentreX > (midW + delta) && (ballCentreX - midW) > (midH - ballCentreY)) && UlPistnieje)	// czy po prawej
+		{
+			document.getElementById("strzalPrw").style.opacity = 0.5;
+			document.getElementById("strzalLew").style.opacity = 0.0;
+			document.getElementById("strzalPros").style.opacity = 0.0;
+			
+			dokadJedziesz = NazwaPUlicyIPasy;
+		}
+		else {
+			document.getElementById("strzalPrw").style.opacity = 0.0;
+	
+		if((ballCentreX < (midW - delta) && (midW - ballCentreX) > (midH - ballCentreY))&& UlListnieje)	// czy po lewej
+			{
+				document.getElementById("strzalLew").style.opacity = 0.5;
+				document.getElementById("strzalPros").style.opacity = 0.0;
+				
+				dokadJedziesz = NazwaLUlicyIPasy;
+			}
+			else {
+				document.getElementById("strzalLew").style.opacity = 0.0;
+	
+			if((ballCentreY < (midH - delta))&& UlGistnieje)	// czy do góry
+				{
+					document.getElementById("strzalPros").style.opacity = 0.5;
+					
+					dokadJedziesz = NazwaGUlicyIPasy;
+				}
+				else {document.getElementById("strzalPros").style.opacity = 0.0; turnValid = false;}
+				}
+		}
+		
+		if(typPojazdu == "przywilej"){ 	//apparently byla jakas kolizja
+		$(document).ready(function(){
+			$(".ball").mouseup(function(){
+				if(turnValid){
+					let czasPrzejazdu = new Date();
+					var dataIGodzina = czasPrzejazdu.getFullYear() + "." + czasPrzejazdu.getMonth() + "." + czasPrzejazdu.getDate() + " " + czasPrzejazdu.getHours() + ":" + czasPrzejazdu.getMinutes() + ":" + czasPrzejazdu.getSeconds();
+				
+					document.getElementById("debug").innerHTML = "ostatni zapis: " + dataIGodzina + "<br>Pojazd uprzywilejowany przejechal z " + NazwaDUlicyIPasy + " do " + dokadJedziesz;
+					audio.play();
+				}
+				resetBallPos();
+			});
+		});
+}}}		//koniec ocen kulki
+
+
+function pieszyPlus(){
+	let czasPrzejazdu = new Date();
+	var dataIGodzina = czasPrzejazdu.getFullYear() + "." + czasPrzejazdu.getMonth() + "." + czasPrzejazdu.getDate() + " " + czasPrzejazdu.getHours() + ":" + czasPrzejazdu.getMinutes() + ":" + czasPrzejazdu.getSeconds();
+				
+	document.getElementById("debug").innerHTML = "ostatni zapis: " + dataIGodzina + "<br>Pieszy przeszedł przez " + NazwaDUlicyIPasy + ".";
+		audio.play();
+}
+
+function undoCommit(){
+	document.getElementById("debug").innerHTML = "cofnięto ostatni dodany wpis";
+}
+
+function startAfterConfirmed(){
+  	//var destination = $('myCanvas').offset();
+	//$('.kulka1').css({top: destination.top, left: destination.left});
+
+	NazwaDUlicyIPasy = document.getElementById("nazwaDulicy").value + "(" + document.getElementById("ilePasowDol").value + "-pasowka)";
+	//if(document.getElementById("nazwaDulicy").value != "")  UlDistnieje = true;	//jdjd zawsze musi byc
+	NazwaGUlicyIPasy = document.getElementById("nazwaGulicy").value + "(" + document.getElementById("ilePasowGora").value + "-pasowka)";
+	if(document.getElementById("nazwaGulicy").value != "")  UlGistnieje = true;
+	NazwaPUlicyIPasy = document.getElementById("nazwaPulicy").value + "(" + document.getElementById("ilePasowPrawo").value + "-pasowka)";
+	if(document.getElementById("nazwaPulicy").value != "")  UlPistnieje = true;
+	NazwaLUlicyIPasy = document.getElementById("nazwaLulicy").value + "(" + document.getElementById("ilePasowLewo").value + "-pasowka)";
+	if(document.getElementById("nazwaLulicy").value != "")  UlListnieje = true;
+	
+	
+	document.getElementById("confirm").style.visibility = "hidden";
+	document.getElementById("Dulica").style.visibility = "hidden";
+	document.getElementById("Gulica").style.visibility = "hidden";
+	document.getElementById("Pulica").style.visibility = "hidden";
+	document.getElementById("Lulica").style.visibility = "hidden";
+	
+	  drawCrossroad();
+	  resetBallPos();
+	  moveTo("pieszy", midW -84,midH +160);
+	  
+	document.getElementById("kulka1").style.visibility = "visible";
+	document.getElementById("kulka3").style.visibility = "visible";
+	document.getElementById("kulka5").style.visibility = "visible";
+	document.getElementById("kulka10").style.visibility = "visible";
+	document.getElementById("pieszy").style.visibility = "visible";
+	document.getElementById("undo").style.visibility = "visible";
+	
+	
+setInterval(evalB1Dir, 1);
+setInterval(evalB3Dir, 1);
+setInterval(evalB5Dir, 1);
+setInterval(evalB10Dir, 1);
+}
+
+/*$(document).ready(function(){
+	$(".ball").mouseup(function(){
+		let czasPrzejazdu = new Date();
+		evalB1Dir();
+		evalB3Dir();
+		evalB5Dir();
+		evalB10Dir();
+			var dataIGodzina = czasPrzejazdu.getFullYear() + "." + czasPrzejazdu.getMonth() + "." + czasPrzejazdu.getDate() + " " + czasPrzejazdu.getHours() + ":" + czasPrzejazdu.getMinutes() + ":" + czasPrzejazdu.getSeconds();
+				
+				
+				document.getElementById("debug").innerHTML = "ostatni zapis: " + dataIGodzina + "<br>Pojazd uprzywilejowany przejechal z " + NazwaDUlicyIPasy + " do " + dokadJedziesz;
+				resetBallPos();
+			});
+		});*/
+
+window.onload = function() {
+
+	drawImg('drogaSR',midW - 188/2,midH - 188/2);	//srodek
+	drawImg('drzewa',midW - 512/2,midH - 512/2);	//las
+	
+
+	moveTo("Dulica", midW - 96, midH + 190);
+	moveTo("Gulica", midW - 96, midH - 190);
+	moveTo("Pulica", midW + 130, midH - 10);
+	moveTo("Lulica", midW - 308, midH - 10);
+	
+	moveTo("confirm", midW -18, midH +4);
+	
+	moveTo("undo", 30, 80);
+	
+	document.getElementById("kulka1").style.visibility = "hidden";
+	document.getElementById("kulka3").style.visibility = "hidden";
+	document.getElementById("kulka5").style.visibility = "hidden";
+	document.getElementById("kulka10").style.visibility = "hidden";
+	document.getElementById("pieszy").style.visibility = "hidden";
+	document.getElementById("undo").style.visibility = "hidden";
+	
+	/*var grd = ctx.createRadialGradient(75, 50, 5, 90, 60, 100);
+	grd.addColorStop(0, "#50be8c");
+	grd.addColorStop(1, "green");
+
+	ctx.fillStyle = grd;
+	ctx.fillRect(0, 0, midW * 2, midH * 2);*/
+	
+};
+
+
+</script>
+
+</body>
+</html>
